@@ -1,8 +1,8 @@
 <?php
 /* Sample config file to put in /etc/yiimp/keys.php */
 
-define('YIIMP_MYSQLDUMP_USER', 'root');
-define('YIIMP_MYSQLDUMP_PASS', '<my_mysql_password>');
+define('YIIMP_MYSQLDUMP_USER', 'yiimpweb');
+define('YIIMP_MYSQLDUMP_PASS', 'YWCoundup50!');
 define('YIIMP_MYSQLDUMP_PATH', '/root/backup');
 
 /* Keys required to create/cancel orders and access your balances/deposit addresses */

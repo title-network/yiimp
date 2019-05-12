@@ -71,7 +71,7 @@ void client_adjust_difficulty(YAAMP_CLIENT *client)
 
 int client_send_difficulty(YAAMP_CLIENT *client, double difficulty)
 {
-//	debuglog("%s diff %f\n", client->sock->ip, difficulty);
+	debuglog("%s diff %f\n", client->sock->ip, difficulty);
 	client->shares_per_minute = YAAMP_SHAREPERSEC;
 
 	if(difficulty >= 1)

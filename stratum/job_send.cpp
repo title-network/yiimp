@@ -30,6 +30,14 @@ static void job_mining_notify_buffer(YAAMP_JOB *job, char *buffer)
 			templ->txmerkles, templ->version, templ->nbits, templ->ntime);
 		return;
 	}
+	else if (!strcmp(g_stratum_algo, "siaasic")) {
+                templ->version[1] = '1';
+                sprintf(buffer, "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"%x\",\"%s\",\"%s\",\"%s\",[%s],\"%s\",\"%s\",\"00000000%s\",true]}\n",
+                /*  1             2               3               4                5         6                   7             8 */
+                job->id, templ->prevhash_be, templ->coinb1, templ->coinb2, templ->txmerkles, templ->version , templ->nbits, templ->ntime);
+                return;
+        }
+
 
 	// standard stratum
 	sprintf(buffer, "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"%x\",\"%s\",\"%s\",\"%s\",[%s],\"%s\",\"%s\",\"%s\",true]}\n",

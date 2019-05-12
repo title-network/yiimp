@@ -40,6 +40,10 @@ void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *tem
 			ntime, templ->nbits, nonce, templ->extradata_be);
 		ser_string_be(submitvalues->header, submitvalues->header_be, 36); // 80+64 / sizeof(u32)
 	} else {
+	       bool is_sia = g_current_algo->name && !strcmp("siaasic",g_current_algo->name);
+               if (is_sia) {
+                   templ->version[1] = '1';
+               }
 		sprintf(submitvalues->header, "%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be,
 			ntime, templ->nbits, nonce);
 		ser_string_be(submitvalues->header, submitvalues->header_be, 20);
@@ -147,6 +151,14 @@ static void client_do_submit(YAAMP_CLIENT *client, YAAMP_JOB *job, YAAMP_JOB_VAL
 
 	uint64_t hash_int = get_hash_difficulty(submitvalues->hash_bin);
 	uint64_t coin_target = decode_compact(templ->nbits);
+	bool is_sia = g_current_algo->name && !strcmp("siaasic",g_current_algo->name);
+	/* Attempt to adjust sia difficulty to standard bitcoin difficutly */
+        /* and flag that block is coming from an ASIC */
+        if (is_sia) {
+           hash_int /= 4295032833;
+           templ->version[1] = '1';
+        }
+
 	if (templ->nbits && !coin_target) coin_target = 0xFFFF000000000000ULL;
 
 	int block_size = YAAMP_SMALLBUFSIZE;
@@ -298,7 +310,7 @@ static void client_do_submit(YAAMP_CLIENT *client, YAAMP_JOB *job, YAAMP_JOB_VAL
 		}
 
 		else {
-			debuglog("*** REJECTED :( %s block %d %d txs\n", coind->name, templ->height, templ->txcount);
+	 //		debuglog("*** REJECTED :( %s block %d %d txs\n", coind->name, templ->height, templ->txcount);
 			rejectlog("REJECTED %s block %d\n", coind->symbol, templ->height);
 			if (g_debuglog_hash) {
 				//debuglog("block %s\n", block_hex);
@@ -310,7 +322,7 @@ static void client_do_submit(YAAMP_CLIENT *client, YAAMP_JOB *job, YAAMP_JOB_VAL
 	free(block_hex);
 }
 
-bool dump_submit_debug(const char *title, YAAMP_CLIENT *client, YAAMP_JOB *job, char *extranonce2, char *ntime, char *nonce)
+void dump_submit_debug(const char *title, YAAMP_CLIENT *client, YAAMP_JOB *job, char *extranonce2, char *ntime, char *nonce)
 {
 	debuglog("ERROR %s, %s subs %d, job %x, %s, id %x, %d, %s, %s %s\n",
 		title, client->sock->ip, client->extranonce_subscribe, job? job->id: 0, client->extranonce1,
@@ -421,13 +433,27 @@ bool client_submit(YAAMP_CLIENT *client, json_value *json_params)
 	}
 
 	bool is_decred = job->coind && !strcmp("DCR", job->coind->rpcencoding);
+	bool is_sia = g_current_algo->name && !strcmp("siaasic",g_current_algo->name);
 
 	YAAMP_JOB_TEMPLATE *templ = job->templ;
+
+	/* Sia ASIC miners append 8 zeros to the nonce, so throw those away */
+        if (is_sia && (strlen(nonce) == 16)) {
+            nonce[YAAMP_NONCE_SIZE*2]='\0';
+        }
 
 	if(strlen(nonce) != YAAMP_NONCE_SIZE*2 || !ishexa(nonce, YAAMP_NONCE_SIZE*2)) {
 		client_submit_error(client, job, 20, "Invalid nonce size", extranonce2, ntime, nonce);
 		return true;
 	}
+
+	/* Sia ASIC miners prepend 8 zeros to the nonce, so clip those off */
+
+        if (strlen(ntime) == 16) {
+           for (int i=0; i<=8; ++i) {
+              ntime[i] = ntime[i+8];
+           }
+        }
 
 	if(strcmp(ntime, templ->ntime))
 	{
@@ -499,7 +525,7 @@ bool client_submit(YAAMP_CLIENT *client, json_value *json_params)
 
 	// minimum hash diff begins with 0000, for all...
 	uint8_t pfx = submitvalues.hash_bin[30] | submitvalues.hash_bin[31];
-	if(pfx) {
+	if(pfx && !is_sia) {
 		if (g_debuglog_hash) {
 			debuglog("Possible %s error, hash starts with %02x%02x%02x%02x\n", g_current_algo->name,
 				(int) submitvalues.hash_bin[31], (int) submitvalues.hash_bin[30],
@@ -510,6 +536,7 @@ bool client_submit(YAAMP_CLIENT *client, json_value *json_params)
 	}
 
 	uint64_t hash_int = get_hash_difficulty(submitvalues.hash_bin);
+	if (is_sia) hash_int /= 4295032833;
 	uint64_t user_target = diff_to_target(client->difficulty_actual);
 	uint64_t coin_target = decode_compact(templ->nbits);
 	if (templ->nbits && !coin_target) coin_target = 0xFFFF000000000000ULL;
