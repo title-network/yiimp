@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ROOTDIR=/var
+ROOTDIR=/data/yiimp
 DIR=`pwd`
 
 cd "$ROOTDIR/web" && php yaamp/yiic.php "$@"
