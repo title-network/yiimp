@@ -35,7 +35,7 @@ class CronjobController extends CommonController
 		else if(!$webserver_running)
 		{
 			debuglog('starting webserver');
-			system("rc-service $webserver start");
+			system("service $webserver start");
 		}
 	}
 
@@ -200,7 +200,7 @@ class CronjobController extends CommonController
 
 		memcache_set($this->memcache->memcache, 'apache_locked', true);
 		if(YAAMP_USE_NGINX)
-			system("rc-service nginx stop");
+			system("service nginx stop");
 
 		sleep(10);
 		BackendDoBackup();
